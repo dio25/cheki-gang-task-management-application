@@ -1,0 +1,85 @@
+// hooks/useBizRecord.ts
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { format, subDays } from 'date-fns';
+
+const STORAGE_ENTRIES = 'bizrecord_entries';
+const STORAGE_SETTINGS = 'bizrecord_settings';
+
+export type Entry = {
+  id: string;
+  date: string;
+  type: 'income' | 'expense';
+  category: string;
+  amount: number;
+  description: string;
+};
+
+export type Settings = {
+  businessName: string;
+  currency: string;
+};
+
+export function useBizRecord() {
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [settings, setSettings] = useState<Settings>({ businessName: "My Business", currency: "P" });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const savedEntries = await AsyncStorage.getItem(STORAGE_ENTRIES);
+      if (savedEntries) setEntries(JSON.parse(savedEntries));
+
+      const savedSettings = await AsyncStorage.getItem(STORAGE_SETTINGS);
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+    } catch (e) {}
+  };
+
+  const saveEntries = async (newEntries: Entry[]) => {
+    await AsyncStorage.setItem(STORAGE_ENTRIES, JSON.stringify(newEntries));
+    setEntries(newEntries);
+  };
+
+  const saveSettings = async (newSettings: Settings) => {
+    await AsyncStorage.setItem(STORAGE_SETTINGS, JSON.stringify(newSettings));
+    setSettings(newSettings);
+  };
+
+  const addRecord = async (newEntry: Omit<Entry, 'id'>) => {
+    const entry: Entry = { ...newEntry, id: Date.now().toString() };
+    const updated = [entry, ...entries];
+    await saveEntries(updated);
+    return entry;
+  };
+
+  const deleteRecord = async (id: string) => {
+    const updated = entries.filter(e => e.id !== id);
+    await saveEntries(updated);
+  };
+
+  const calculateTotals = (filtered: Entry[]) => {
+    let income = 0, expense = 0;
+    filtered.forEach(e => {
+      if (e.type === 'income') income += e.amount;
+      else expense += e.amount;
+    });
+    return { income, expense, profit: income - expense };
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const weekStart = format(subDays(new Date(), 6), 'yyyy-MM-dd');
+
+  return {
+    entries,
+    settings,
+    saveSettings,
+    addRecord,
+    deleteRecord,
+    calculateTotals,
+    todayStr,
+    weekStart,
+  };
+}
