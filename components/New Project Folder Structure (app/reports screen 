@@ -1,0 +1,39 @@
+// app/(tabs)/reports.tsx
+import { View, Text, ScrollView } from 'react-native';
+import { useBizRecord } from '../../hooks/useBizRecord';
+import { format, subDays } from 'date-fns';
+
+export default function Reports() {
+  const { entries, settings, calculateTotals, weekStart } = useBizRecord();
+
+  const weekEntries = entries.filter(e => e.date >= weekStart);
+  const weekTotals = calculateTotals(weekEntries);
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
+    const dayEntries = entries.filter(e => e.date === d);
+    return { date: d, ...calculateTotals(dayEntries) };
+  });
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50 p-4">
+      <Text className="text-3xl font-bold mb-2">Weekly Summary</Text>
+      <Text className="text-emerald-600 text-5xl font-semibold mb-8">
+        {settings.currency}{weekTotals.profit.toFixed(2)}
+      </Text>
+
+      <View className="flex-row flex-wrap justify-between">
+        {days.map((day, i) => (
+          <View key={i} className="bg-white w-[48%] rounded-3xl p-5 mb-4">
+            <Text className="text-xs text-slate-500">{format(new Date(day.date), 'EEE dd')}</Text>
+            <Text className="text-emerald-600 font-semibold mt-2">+{settings.currency}{day.income.toFixed(0)}</Text>
+            <Text className="text-red-500">-{settings.currency}{day.expense.toFixed(0)}</Text>
+            <Text className={`font-bold text-2xl mt-3 ${day.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              {settings.currency}{day.profit.toFixed(0)}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
