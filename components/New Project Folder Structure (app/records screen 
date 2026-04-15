@@ -1,0 +1,102 @@
+// app/(tabs)/records.tsx
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { useBizRecord, type Entry } from '../../hooks/useBizRecord';
+import { format } from 'date-fns';
+
+export default function Records() {
+  const { entries, settings, addRecord, deleteRecord } = useBizRecord();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [recordDate, setRecordDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recordType, setRecordType] = useState<'income' | 'expense'>('income');
+  const [recordCategory, setRecordCategory] = useState('');
+  const [recordAmount, setRecordAmount] = useState('');
+  const [recordDesc, setRecordDesc] = useState('');
+
+  const filteredRecords = entries.filter(e =>
+    e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAdd = async () => {
+    if (!recordAmount || parseFloat(recordAmount) <= 0) {
+      Alert.alert("Error", "Please enter a valid amount");
+      return;
+    }
+
+    await addRecord({
+      date: recordDate,
+      type: recordType,
+      category: recordCategory || (recordType === 'income' ? 'Sales' : 'Other'),
+      amount: parseFloat(recordAmount),
+      description: recordDesc || 'No description'
+    });
+
+    // Reset form
+    setRecordCategory('');
+    setRecordAmount('');
+    setRecordDesc('');
+    Alert.alert("✅ Record saved!");
+  };
+
+  return (
+    <View className="flex-1 bg-slate-50">
+      {/* Search */}
+      <View className="p-4 bg-white border-b">
+        <TextInput
+          placeholder="Search records..."
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          className="bg-slate-100 px-4 py-3 rounded-3xl"
+        />
+      </View>
+
+      {/* Add Form */}
+      <View className="p-4 bg-white border-b">
+        <Text className="font-semibold text-lg mb-3">New Record</Text>
+
+        <TextInput value={recordDate} onChangeText={setRecordDate} placeholder="YYYY-MM-DD" className="border border-slate-200 p-3 rounded-2xl mb-3" />
+
+        <View className="flex-row gap-3 mb-3">
+          <TouchableOpacity onPress={() => setRecordType('income')} className={`flex-1 py-3 rounded-2xl ${recordType === 'income' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
+            <Text className={`text-center ${recordType === 'income' ? 'text-white' : ''}`}>Income</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setRecordType('expense')} className={`flex-1 py-3 rounded-2xl ${recordType === 'expense' ? 'bg-red-600' : 'bg-slate-100'}`}>
+            <Text className={`text-center ${recordType === 'expense' ? 'text-white' : ''}`}>Expense</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TextInput placeholder="Category" value={recordCategory} onChangeText={setRecordCategory} className="border border-slate-200 p-3 rounded-2xl mb-3" />
+        <TextInput placeholder="Amount" value={recordAmount} onChangeText={setRecordAmount} keyboardType="decimal-pad" className="border border-slate-200 p-3 rounded-2xl mb-3" />
+        <TextInput placeholder="Description" value={recordDesc} onChangeText={setRecordDesc} className="border border-slate-200 p-3 rounded-2xl mb-4" />
+
+        <TouchableOpacity onPress={handleAdd} className="bg-emerald-600 py-4 rounded-3xl">
+          <Text className="text-white text-center font-semibold text-lg">Save Record</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={filteredRecords}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <View className="bg-white mx-4 my-2 p-5 rounded-3xl flex-row justify-between">
+            <View>
+              <Text className="font-medium">{format(new Date(item.date), 'dd MMM yyyy')}</Text>
+              <Text className="text-slate-600">{item.description}</Text>
+              <Text className="text-xs text-slate-400">{item.category}</Text>
+            </View>
+            <View className="items-end">
+              <Text className={`font-bold text-xl ${item.type === 'income' ? 'text-emerald-600' : 'text-red-500'}`}>
+                {item.type === 'income' ? '+' : '-'}{settings.currency}{item.amount.toFixed(2)}
+              </Text>
+              <TouchableOpacity onPress={() => deleteRecord(item.id)}>
+                <Text className="text-red-500 text-2xl mt-2">×</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        ListEmptyComponent={<Text className="text-center text-slate-400 mt-10">No records yet</Text>}
+      />
+    </View>
+  );
+}
