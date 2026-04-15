@@ -1,0 +1,72 @@
+// app/(tabs)/index.tsx
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useBizRecord } from '../../hooks/useBizRecord';
+import { format } from 'date-fns';
+
+export default function Dashboard() {
+  const { entries, settings, calculateTotals, todayStr, weekStart } = useBizRecord();
+  const router = useRouter();
+
+  const todayEntries = entries.filter(e => e.date === todayStr);
+  const todayTotals = calculateTotals(todayEntries);
+
+  const weekEntries = entries.filter(e => e.date >= weekStart && e.date <= todayStr);
+  const weekTotals = calculateTotals(weekEntries);
+
+  const allTotals = calculateTotals(entries);
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50 p-4">
+      <View className="flex-row justify-between items-center mb-6">
+        <Text className="text-3xl font-bold">Dashboard</Text>
+        <Text className="text-2xl font-semibold text-emerald-600">
+          {settings.currency}{allTotals.profit.toFixed(2)}
+        </Text>
+      </View>
+
+      {/* Today */}
+      <View className="bg-white rounded-3xl p-6 mb-4">
+        <Text className="text-slate-500">TODAY • {format(new Date(), 'EEEE, dd MMM')}</Text>
+        <View className="flex-row justify-between mt-6">
+          <View>
+            <Text className="text-emerald-600 text-3xl font-semibold">+{settings.currency}{todayTotals.income.toFixed(2)}</Text>
+            <Text className="text-slate-500">Income</Text>
+          </View>
+          <View>
+            <Text className="text-red-500 text-3xl font-semibold">-{settings.currency}{todayTotals.expense.toFixed(2)}</Text>
+            <Text className="text-slate-500">Expense</Text>
+          </View>
+        </View>
+        <Text className={`text-4xl font-bold mt-8 ${todayTotals.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          {settings.currency}{todayTotals.profit.toFixed(2)}
+        </Text>
+      </View>
+
+      {/* Week */}
+      <View className="bg-white rounded-3xl p-6 mb-8">
+        <Text className="text-slate-500">THIS WEEK</Text>
+        <View className="flex-row justify-between mt-6">
+          <View>
+            <Text className="text-emerald-600 text-3xl font-semibold">+{settings.currency}{weekTotals.income.toFixed(2)}</Text>
+            <Text className="text-slate-500">Income</Text>
+          </View>
+          <View>
+            <Text className="text-red-500 text-3xl font-semibold">-{settings.currency}{weekTotals.expense.toFixed(2)}</Text>
+            <Text className="text-slate-500">Expense</Text>
+          </View>
+        </View>
+        <Text className={`text-4xl font-bold mt-8 ${weekTotals.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          {settings.currency}{weekTotals.profit.toFixed(2)}
+        </Text>
+      </View>
+
+      <TouchableOpacity 
+        onPress={() => router.push('/(tabs)/records')}
+        className="bg-blue-600 py-5 rounded-3xl items-center"
+      >
+        <Text className="text-white text-xl font-semibold">+ Add Today's Record</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
