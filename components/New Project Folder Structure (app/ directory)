@@ -1,0 +1,9 @@
+app/
+├── _layout.tsx                 ← Root layout (SafeArea + global state)
+├── (tabs)/                     ← Route group for bottom tabs (no URL prefix)
+│   ├── _layout.tsx             ← Bottom Tabs navigator
+│   ├── index.tsx               ← Dashboard (Home tab)
+│   ├── records.tsx             ← Daily Records tab
+│   ├── reports.tsx             ← Weekly Reports tab
+│   └── settings.tsx            ← Settings tab
+└── +not-found.tsx              ← Optional: 404 screen
