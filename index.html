@@ -1,24 +1,788 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Kanban App</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizRecord • Business Record Keeper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap');
+        
+        :root {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .sidebar-link {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .sidebar-link.active {
+            background-color: #1e40af;
+            color: white;
+            border-radius: 8px;
+        }
+        
+        .card-hover {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        
+        .amount-positive {
+            color: #10b981;
+        }
+        
+        .amount-negative {
+            color: #ef4444;
+        }
+        
+        .table-row {
+            transition: background-color 0.1s;
+        }
+        
+        .table-row:hover {
+            background-color: #f8fafc;
+        }
+    </style>
 </head>
-<body>
-  <div id="root"></div>
+<body class="bg-slate-50 text-slate-800">
+    <div class="flex h-screen overflow-hidden">
+        <!-- SIDEBAR -->
+        <div class="w-72 bg-white border-r border-slate-200 flex flex-col shadow-xl">
+            <!-- Logo & Header -->
+            <div class="px-8 py-6 border-b border-slate-100 flex items-center gap-3">
+                <div class="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-inner">📖</div>
+                <div>
+                    <h1 class="text-2xl font-semibold tracking-tight">BizRecord</h1>
+                    <p class="text-xs text-slate-500 -mt-1">Smart record keeping</p>
+                </div>
+            </div>
 
-  <!-- React CDN -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+            <!-- Business Info -->
+            <div id="sidebar-business" class="px-8 py-4 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div id="sidebar-avatar" class="w-8 h-8 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-lg">🏪</div>
+                    <div>
+                        <p id="sidebar-name" class="font-semibold text-lg">My Business</p>
+                        <p id="sidebar-location" class="text-xs text-slate-500">Gaborone, Botswana</p>
+                    </div>
+                </div>
+            </div>
 
-  <!-- Components -->
-  <script type="text/babel" src="components/CounterBar.js"></script>
-  <script type="text/babel" src="components/TaskForm.js"></script>
-  <script type="text/babel" src="components/Board.js"></script>
+            <!-- Navigation -->
+            <div class="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+                <button onclick="navigateTo('dashboard')" id="nav-dashboard"
+                        class="sidebar-link w-full flex items-center gap-3 px-5 py-4 text-lg font-medium text-slate-700 hover:bg-slate-100 active">
+                    <span class="text-2xl">📊</span>
+                    Dashboard
+                </button>
+                <button onclick="navigateTo('records')" id="nav-records"
+                        class="sidebar-link w-full flex items-center gap-3 px-5 py-4 text-lg font-medium text-slate-700 hover:bg-slate-100">
+                    <span class="text-2xl">📝</span>
+                    Daily Records
+                </button>
+                <button onclick="navigateTo('reports')" id="nav-reports"
+                        class="sidebar-link w-full flex items-center gap-3 px-5 py-4 text-lg font-medium text-slate-700 hover:bg-slate-100">
+                    <span class="text-2xl">📅</span>
+                    Weekly Reports
+                </button>
+                <button onclick="navigateTo('settings')" id="nav-settings"
+                        class="sidebar-link w-full flex items-center gap-3 px-5 py-4 text-lg font-medium text-slate-700 hover:bg-slate-100">
+                    <span class="text-2xl">⚙️</span>
+                    Settings
+                </button>
+            </div>
 
-  <!-- Main App -->
-  <script type="text/babel" src="app.js"></script>
+            <!-- Footer -->
+            <div class="p-6 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+                <div>
+                    Made for small businesses in Botswana 🇧🇼<br>
+                    Data saved locally in your browser
+                </div>
+                <button onclick="clearAllData()" 
+                        class="text-red-400 hover:text-red-600 flex items-center gap-1 text-xs font-medium">
+                    <span>🗑️</span> Clear Data
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            
+            <!-- Top Bar -->
+            <div class="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-4">
+                    <h2 id="page-title" class="text-2xl font-semibold tracking-tight">Dashboard</h2>
+                    <div id="current-date" class="text-sm text-slate-500 font-medium"></div>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <!-- Quick Add Button -->
+                    <button onclick="quickAddRecord()" 
+                            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-3xl font-medium shadow-lg shadow-blue-200 transition-all active:scale-95">
+                        <span class="text-xl">＋</span>
+                        Add Today's Record
+                    </button>
+
+                    <!-- Currency & User -->
+                    <div class="flex items-center gap-3">
+                        <div id="top-currency" class="text-xl font-semibold text-emerald-600">P</div>
+                        <div class="text-right">
+                            <p id="top-business-name" class="font-semibold text-sm">My Business</p>
+                            <p class="text-xs text-slate-400">Dennies Lopang</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Contents -->
+            <div class="flex-1 overflow-auto p-8">
+
+                <!-- DASHBOARD PAGE -->
+                <div id="dashboard-page">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <!-- Today Card -->
+                        <div class="bg-white rounded-3xl p-6 card-hover border border-slate-100">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500">TODAY</p>
+                                    <p id="dash-today-date" class="text-xl font-semibold"></p>
+                                </div>
+                                <div class="text-4xl">📆</div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Income</span>
+                                    <span id="dash-today-income" class="font-semibold text-emerald-600 text-2xl">P0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Expenses</span>
+                                    <span id="dash-today-expense" class="font-semibold text-red-500 text-2xl">P0.00</span>
+                                </div>
+                                <div class="h-px bg-slate-100 my-2"></div>
+                                <div class="flex justify-between text-lg">
+                                    <span class="font-medium">Net Profit</span>
+                                    <span id="dash-today-profit" class="font-semibold text-3xl">P0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- This Week Card -->
+                        <div class="bg-white rounded-3xl p-6 card-hover border border-slate-100">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <p class="text-sm font-medium text-slate-500">THIS WEEK</p>
+                                    <p id="dash-week-range" class="text-xl font-semibold"></p>
+                                </div>
+                                <div class="text-4xl">📅</div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Income</span>
+                                    <span id="dash-week-income" class="font-semibold text-emerald-600 text-2xl">P0.00</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Expenses</span>
+                                    <span id="dash-week-expense" class="font-semibold text-red-500 text-2xl">P0.00</span>
+                                </div>
+                                <div class="h-px bg-slate-100 my-2"></div>
+                                <div class="flex justify-between text-lg">
+                                    <span class="font-medium">Net Profit</span>
+                                    <span id="dash-week-profit" class="font-semibold text-3xl">P0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Total Balance Card -->
+                        <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-3xl p-6 card-hover">
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <p class="text-blue-200 text-sm font-medium">OVERALL BALANCE</p>
+                                    <p id="dash-total-balance" class="text-4xl font-semibold mt-1">P0.00</p>
+                                </div>
+                                <div class="text-5xl opacity-75">💰</div>
+                            </div>
+                            <p class="text-blue-100 text-sm">All records so far • Keep growing your business!</p>
+                            <div id="dash-total-entries" class="mt-6 text-xs bg-white/20 text-white px-4 py-2 rounded-2xl inline-flex items-center gap-2">
+                                <span>0 records logged</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Transactions -->
+                    <div class="bg-white rounded-3xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-lg">Recent Transactions</h3>
+                            <button onclick="navigateTo('records')" 
+                                    class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                                View all records →
+                            </button>
+                        </div>
+                        <table id="dash-recent-table" class="w-full">
+                            <thead>
+                                <tr class="border-b text-xs text-slate-400">
+                                    <th class="text-left py-3 font-medium">DATE</th>
+                                    <th class="text-left py-3 font-medium">TYPE</th>
+                                    <th class="text-left py-3 font-medium">DESCRIPTION</th>
+                                    <th class="text-right py-3 font-medium">AMOUNT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-recent-body" class="divide-y text-sm"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RECORDS PAGE -->
+                <div id="records-page" class="hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                            <span>📝</span> Daily Proceedings
+                        </h3>
+                        
+                        <!-- Add new entry form -->
+                        <div class="bg-white rounded-3xl p-8 mb-8 shadow-sm">
+                            <form id="add-form" onsubmit="handleAddRecord(event)" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">DATE</label>
+                                    <input type="date" id="record-date" value="" 
+                                           class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">TYPE</label>
+                                    <select id="record-type" class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-400 outline-none">
+                                        <option value="income">💰 Income</option>
+                                        <option value="expense">💸 Expense</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">CATEGORY</label>
+                                    <input type="text" id="record-category" placeholder="e.g. Sales, Rent, Fuel" 
+                                           class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">AMOUNT (P)</label>
+                                    <input type="number" id="record-amount" step="0.01" placeholder="0.00" required
+                                           class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">DESCRIPTION</label>
+                                    <input type="text" id="record-desc" placeholder="What was this for?" 
+                                           class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-400 outline-none">
+                                </div>
+                                <div class="md:col-span-5 flex justify-end">
+                                    <button type="submit"
+                                            class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-3xl flex items-center gap-2">
+                                        <span>SAVE PROCEEDING</span>
+                                        <span class="text-xl">→</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Records Table -->
+                        <div class="bg-white rounded-3xl overflow-hidden">
+                            <div class="px-6 py-4 border-b flex items-center justify-between">
+                                <h4 class="font-medium">All Records</h4>
+                                <input id="search-input" type="text" placeholder="Search records..." 
+                                       onkeyup="filterRecords()"
+                                       class="w-72 px-4 py-2 bg-slate-100 rounded-3xl text-sm focus:outline-none">
+                            </div>
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="bg-slate-50 text-xs font-medium text-slate-400">
+                                        <th class="text-left px-6 py-4">DATE</th>
+                                        <th class="text-left px-6 py-4">TYPE</th>
+                                        <th class="text-left px-6 py-4">CATEGORY</th>
+                                        <th class="text-left px-6 py-4">DESCRIPTION</th>
+                                        <th class="text-right px-6 py-4">AMOUNT</th>
+                                        <th class="w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="records-table-body" class="divide-y text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REPORTS PAGE -->
+                <div id="reports-page" class="hidden">
+                    <div class="max-w-4xl mx-auto">
+                        <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                            <span>📅</span> Weekly Settings &amp; Proceedings Summary
+                        </h3>
+                        
+                        <div class="bg-white rounded-3xl p-8 mb-8">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <p class="text-sm text-slate-500">CURRENT WEEK</p>
+                                    <p id="report-week-title" class="text-2xl font-semibold"></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-emerald-600 text-4xl font-semibold" id="report-week-profit">P0.00</p>
+                                    <p class="text-xs text-slate-400">NET PROFIT THIS WEEK</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Weekly daily breakdown -->
+                            <div id="weekly-breakdown" class="grid grid-cols-7 gap-3"></div>
+                        </div>
+
+                        <div class="text-center text-slate-400 text-sm">
+                            Tip: Use the Daily Records page to log proceedings every day.<br>
+                            Weekly reports update automatically and help you track business performance.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SETTINGS PAGE -->
+                <div id="settings-page" class="hidden max-w-2xl mx-auto">
+                    <div class="bg-white rounded-3xl p-8">
+                        <h3 class="text-xl font-semibold mb-6">Business Settings</h3>
+                        
+                        <div class="space-y-8">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Business Name</label>
+                                <input id="settings-name" type="text" 
+                                       class="w-full px-5 py-4 rounded-3xl border border-slate-200 focus:border-blue-500 outline-none text-lg">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-500 mb-2">Currency Symbol</label>
+                                <div class="flex gap-3">
+                                    <button onclick="setCurrency('P')" 
+                                            class="flex-1 py-4 rounded-3xl border text-lg font-medium hover:border-blue-500 transition-colors" id="currency-P">P (Botswana Pula)</button>
+                                    <button onclick="setCurrency('$')" 
+                                            class="flex-1 py-4 rounded-3xl border text-lg font-medium hover:border-blue-500 transition-colors" id="currency-\( "> \) (US Dollar)</button>
+                                    <button onclick="setCurrency('€')" 
+                                            class="flex-1 py-4 rounded-3xl border text-lg font-medium hover:border-blue-500 transition-colors" id="currency-€">€ (Euro)</button>
+                                </div>
+                            </div>
+
+                            <div class="pt-6 border-t">
+                                <button onclick="saveSettings()" 
+                                        class="w-full py-5 bg-blue-600 text-white rounded-3xl text-lg font-semibold hover:bg-blue-700">
+                                    SAVE SETTINGS
+                                </button>
+                            </div>
+                            
+                            <div class="text-xs text-slate-400 text-center">
+                                All data is stored only in your browser.<br>
+                                For a full cloud version (multi-device, team access), reply and I can help you upgrade to Firebase or Supabase.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind initialization
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        content: [],
+                        theme: { extend: {} },
+                        plugins: [],
+                        ...userConfig,
+                    }
+                },
+                theme: { extend: {} }
+            }
+        }
+        
+        // Global data
+        let entries = []
+        let settings = {
+            businessName: "My Business",
+            currency: "P"
+        }
+        let currentPage = 'dashboard'
+        
+        const STORAGE_ENTRIES = 'bizrecord_entries'
+        const STORAGE_SETTINGS = 'bizrecord_settings'
+        
+        // Date utilities
+        function todayStr() {
+            const date = new Date()
+            return date.toISOString().split('T')[0]
+        }
+        
+        function formatDate(dateStr) {
+            const date = new Date(dateStr)
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        }
+        
+        function isToday(dateStr) {
+            return dateStr === todayStr()
+        }
+        
+        function getWeekRange() {
+            const today = new Date()
+            const start = new Date(today)
+            start.setDate(today.getDate() - 6) // last 7 days including today
+            return {
+                start: start.toISOString().split('T')[0],
+                end: todayStr(),
+                display: `${formatDate(start.getTime())} - ${formatDate(todayStr())}`
+            }
+        }
+        
+        // Load from localStorage
+        function loadData() {
+            // Entries
+            const savedEntries = localStorage.getItem(STORAGE_ENTRIES)
+            if (savedEntries) entries = JSON.parse(savedEntries)
+            
+            // Settings
+            const savedSettings = localStorage.getItem(STORAGE_SETTINGS)
+            if (savedSettings) settings = JSON.parse(savedSettings)
+            
+            // Update UI
+            document.getElementById('sidebar-name').textContent = settings.businessName
+            document.getElementById('top-business-name').textContent = settings.businessName
+            document.getElementById('top-currency').innerHTML = `<span class="text-2xl">${settings.currency}</span>`
+            document.getElementById('settings-name').value = settings.businessName
+        }
+        
+        function saveEntries() {
+            localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(entries))
+        }
+        
+        function saveSettings() {
+            localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings))
+            loadData() // refresh UI
+            showToast("✅ Settings saved!")
+            navigateTo('dashboard')
+        }
+        
+        // Add record
+        function handleAddRecord(e) {
+            e.preventDefault()
+            
+            const date = document.getElementById('record-date').value
+            const type = document.getElementById('record-type').value
+            const category = document.getElementById('record-category').value.trim()
+            const amount = parseFloat(document.getElementById('record-amount').value)
+            const desc = document.getElementById('record-desc').value.trim()
+            
+            if (!date || !amount || amount <= 0) {
+                alert("Please fill date and a valid amount")
+                return
+            }
+            
+            const newEntry = {
+                id: Date.now(),
+                date: date,
+                type: type,
+                category: category || (type === 'income' ? 'Sales' : 'Other'),
+                amount: amount,
+                description: desc || 'No description'
+            }
+            
+            entries.unshift(newEntry)
+            saveEntries()
+            
+            // Reset form
+            document.getElementById('add-form').reset()
+            document.getElementById('record-date').value = todayStr()
+            
+            showToast("✅ Record saved!")
+            
+            // If on records page, refresh table
+            if (currentPage === 'records') renderRecordsTable()
+            else if (currentPage === 'dashboard') renderDashboard()
+            
+            // Auto-switch to records if not already there
+            if (currentPage !== 'records') navigateTo('records')
+        }
+        
+        // Quick add opens pre-filled form on records page
+        function quickAddRecord() {
+            navigateTo('records')
+            // Pre-fill today's date
+            setTimeout(() => {
+                document.getElementById('record-date').value = todayStr()
+                document.getElementById('record-category').focus()
+            }, 100)
+        }
+        
+        // Delete record
+        function deleteRecord(id) {
+            if (!confirm("Delete this record permanently?")) return
+            entries = entries.filter(entry => entry.id !== id)
+            saveEntries()
+            if (currentPage === 'records') renderRecordsTable()
+            else if (currentPage === 'dashboard') renderDashboard()
+            showToast("🗑️ Record deleted")
+        }
+        
+        // Calculate totals for a filtered list
+        function calculateTotals(filteredEntries) {
+            let income = 0
+            let expense = 0
+            
+            filteredEntries.forEach(entry => {
+                if (entry.type === 'income') income += entry.amount
+                else expense += entry.amount
+            })
+            
+            return {
+                income: income,
+                expense: expense,
+                profit: income - expense
+            }
+        }
+        
+        // Filter entries by date range
+        function filterEntries(startDate, endDate) {
+            return entries.filter(entry => {
+                return entry.date >= startDate && entry.date <= endDate
+            })
+        }
+        
+        // Render dashboard
+        function renderDashboard() {
+            const today = todayStr()
+            const week = getWeekRange()
+            
+            // Today
+            const todayEntries = entries.filter(e => e.date === today)
+            const todayTotals = calculateTotals(todayEntries)
+            
+            document.getElementById('dash-today-date').textContent = new Date(today).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+            document.getElementById('dash-today-income').textContent = `\( {settings.currency} \){todayTotals.income.toFixed(2)}`
+            document.getElementById('dash-today-expense').textContent = `\( {settings.currency} \){todayTotals.expense.toFixed(2)}`
+            const todayProfitEl = document.getElementById('dash-today-profit')
+            todayProfitEl.textContent = `\( {settings.currency} \){todayTotals.profit.toFixed(2)}`
+            todayProfitEl.className = todayTotals.profit >= 0 ? 'font-semibold text-3xl text-emerald-600' : 'font-semibold text-3xl text-red-500'
+            
+            // Week
+            const weekEntries = filterEntries(week.start, week.end)
+            const weekTotals = calculateTotals(weekEntries)
+            
+            document.getElementById('dash-week-range').textContent = week.display
+            document.getElementById('dash-week-income').textContent = `\( {settings.currency} \){weekTotals.income.toFixed(2)}`
+            document.getElementById('dash-week-expense').textContent = `\( {settings.currency} \){weekTotals.expense.toFixed(2)}`
+            const weekProfitEl = document.getElementById('dash-week-profit')
+            weekProfitEl.textContent = `\( {settings.currency} \){weekTotals.profit.toFixed(2)}`
+            weekProfitEl.className = weekTotals.profit >= 0 ? 'font-semibold text-3xl text-emerald-600' : 'font-semibold text-3xl text-red-500'
+            
+            // Total balance
+            const allTotals = calculateTotals(entries)
+            document.getElementById('dash-total-balance').innerHTML = `<span class="text-4xl">\( {settings.currency}</span> \){allTotals.profit.toFixed(2)}`
+            document.getElementById('dash-total-entries').innerHTML = `<span class="text-2xl">📖</span> ${entries.length} records logged`
+            
+            // Recent 5
+            const recentBody = document.getElementById('dash-recent-body')
+            recentBody.innerHTML = ''
+            
+            const recentFive = entries.slice(0, 5)
+            
+            if (recentFive.length === 0) {
+                recentBody.innerHTML = `<tr><td colspan="4" class="text-center py-12 text-slate-400">No records yet.<br><button onclick="navigateTo('records')" class="mt-4 text-blue-600 underline">Add your first record</button></td></tr>`
+                return
+            }
+            
+            recentFive.forEach(entry => {
+                const row = document.createElement('tr')
+                row.className = 'table-row'
+                row.innerHTML = `
+                    <td class="py-4 px-2 font-medium">${formatDate(entry.date)}</td>
+                    <td class="py-4 px-2">
+                        <span class="\( {entry.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} text-xs px-3 py-1 rounded-3xl font-medium"> \){entry.type === 'income' ? 'INCOME' : 'EXPENSE'}</span>
+                    </td>
+                    <td class="py-4 px-2">${entry.description}</td>
+                    <td class="py-4 px-2 text-right font-semibold ${entry.type === 'income' ? 'amount-positive' : 'amount-negative'}">
+                        \( {entry.type === 'income' ? '+' : '-'} \){settings.currency}${entry.amount.toFixed(2)}
+                    </td>
+                `
+                recentBody.appendChild(row)
+            })
+        }
+        
+        // Render full records table
+        function renderRecordsTable(filterTerm = '') {
+            const tbody = document.getElementById('records-table-body')
+            tbody.innerHTML = ''
+            
+            let filtered = entries
+            
+            if (filterTerm) {
+                const term = filterTerm.toLowerCase()
+                filtered = entries.filter(e => 
+                    e.description.toLowerCase().includes(term) ||
+                    e.category.toLowerCase().includes(term)
+                )
+            }
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-16 text-slate-400">No matching records found</td></tr>`
+                return
+            }
+            
+            filtered.forEach(entry => {
+                const row = document.createElement('tr')
+                row.className = 'table-row'
+                row.innerHTML = `
+                    <td class="px-6 py-4">${formatDate(entry.date)}</td>
+                    <td class="px-6 py-4">
+                        <span class="\( {entry.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} text-xs px-3 py-1 rounded-3xl font-medium"> \){entry.type.toUpperCase()}</span>
+                    </td>
+                    <td class="px-6 py-4 font-medium">${entry.category}</td>
+                    <td class="px-6 py-4">${entry.description}</td>
+                    <td class="px-6 py-4 text-right font-semibold ${entry.type === 'income' ? 'amount-positive' : 'amount-negative'}">
+                        \( {entry.type === 'income' ? '+' : '-'} \){settings.currency}${entry.amount.toFixed(2)}
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="deleteRecord(${entry.id});" class="text-red-400 hover:text-red-600 text-xl leading-none">×</button>
+                    </td>
+                `
+                tbody.appendChild(row)
+            })
+        }
+        
+        function filterRecords() {
+            const term = document.getElementById('search-input').value
+            renderRecordsTable(term)
+        }
+        
+        // Weekly report breakdown
+        function renderWeeklyReport() {
+            const week = getWeekRange()
+            document.getElementById('report-week-title').innerHTML = `Week of <span class="text-blue-600">${week.display}</span>`
+            
+            const weekEntries = filterEntries(week.start, week.end)
+            const totals = calculateTotals(weekEntries)
+            document.getElementById('report-week-profit').innerHTML = `\( {settings.currency}<span class="text-5xl"> \){totals.profit.toFixed(2)}</span>`
+            
+            // Daily breakdown grid
+            const container = document.getElementById('weekly-breakdown')
+            container.innerHTML = ''
+            
+            // Generate 7 days
+            const startDate = new Date(week.start)
+            
+            for (let i = 0; i < 7; i++) {
+                const current = new Date(startDate)
+                current.setDate(startDate.getDate() + i)
+                const dayStr = current.toISOString().split('T')[0]
+                const dayName = current.toLocaleDateString('en-GB', { weekday: 'short' })
+                
+                const dayEntries = weekEntries.filter(e => e.date === dayStr)
+                const dayTotal = calculateTotals(dayEntries)
+                
+                const div = document.createElement('div')
+                div.className = 'bg-slate-50 hover:bg-white border border-slate-100 rounded-3xl p-4 text-center transition-all'
+                div.innerHTML = `
+                    <div class="text-xs font-medium text-slate-400 mb-1">${dayName}</div>
+                    <div class="text-lg font-semibold">${formatDate(dayStr)}</div>
+                    <div class="mt-4 text-emerald-600 font-semibold">\( {settings.currency} \){dayTotal.income.toFixed(0)}</div>
+                    <div class="text-red-500 text-sm">\( {settings.currency} \){dayTotal.expense.toFixed(0)}</div>
+                    <div class="mt-3 text-xl font-semibold ${dayTotal.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}">
+                        \( {settings.currency} \){dayTotal.profit.toFixed(0)}
+                    </div>
+                `
+                container.appendChild(div)
+            }
+        }
+        
+        // Set currency in settings
+        function setCurrency(currency) {
+            settings.currency = currency
+            // Highlight active
+            document.querySelectorAll('#settings-page button').forEach(btn => {
+                if (btn.id === `currency-${currency}`) {
+                    btn.classList.add('border-blue-500', 'bg-blue-50')
+                    btn.classList.remove('border-slate-200')
+                } else {
+                    btn.classList.remove('border-blue-500', 'bg-blue-50')
+                    btn.classList.add('border-slate-200')
+                }
+            })
+        }
+        
+        // Navigation
+        function navigateTo(page) {
+            // Hide all pages
+            document.getElementById('dashboard-page').classList.add('hidden')
+            document.getElementById('records-page').classList.add('hidden')
+            document.getElementById('reports-page').classList.add('hidden')
+            document.getElementById('settings-page').classList.add('hidden')
+            
+            // Show selected
+            document.getElementById(page + '-page').classList.remove('hidden')
+            
+            // Update active nav
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'))
+            document.getElementById('nav-' + page).classList.add('active')
+            
+            // Update title
+            const titles = {
+                dashboard: 'Dashboard',
+                records: 'Daily Records',
+                reports: 'Weekly Reports',
+                settings: 'Business Settings'
+            }
+            document.getElementById('page-title').textContent = titles[page]
+            currentPage = page
+            
+            // Render dynamic content
+            if (page === 'dashboard') renderDashboard()
+            else if (page === 'records') {
+                document.getElementById('record-date').value = todayStr()
+                renderRecordsTable()
+            }
+            else if (page === 'reports') renderWeeklyReport()
+        }
+        
+        // Simple toast
+        function showToast(message) {
+            const toast = document.createElement('div')
+            toast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#10b981; color:white; padding:16px 24px; border-radius:9999px; box-shadow:0 10px 15px -3px rgb(16 185 129); font-weight:500;'
+            toast.textContent = message
+            document.body.appendChild(toast)
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s'
+                toast.style.opacity = '0'
+                setTimeout(() => toast.remove(), 300)
+            }, 2800)
+        }
+        
+        // Clear all data (for testing)
+        function clearAllData() {
+            if (confirm("⚠️ This will delete ALL your records permanently. Continue?")) {
+                localStorage.removeItem(STORAGE_ENTRIES)
+                entries = []
+                renderDashboard()
+                if (currentPage === 'records') renderRecordsTable()
+                if (currentPage === 'reports') renderWeeklyReport()
+                showToast("🧹 All data cleared")
+            }
+        }
+        
+        // Initialize everything
+        function initializeApp() {
+            initTailwind()
+            loadData()
+            
+            // Set today's date in forms
+            const today = todayStr()
+            // Dashboard already rendered on first nav
+            
+            navigateTo('dashboard') // start on dashboard
+            
+            console.log('%c✅ BizRecord app ready! You now have a fully working record-keeping app.', 'color:#1e40af; font-weight:600')
+            console.log('📍 Saved in your browser • Works offline • Perfect for small businesses in Gaborone')
+        }
+        
+        // Boot the app
+        window.onload = initializeApp
+    </script>
 </body>
 </html>
