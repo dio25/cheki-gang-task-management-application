@@ -1,0 +1,47 @@
+// app/(tabs)/settings.tsx
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { useBizRecord } from '../../hooks/useBizRecord';
+
+export default function Settings() {
+  const { settings, saveSettings } = useBizRecord();
+
+  const [businessName, setBusinessName] = React.useState(settings.businessName);
+  const [currency, setCurrency] = React.useState(settings.currency);
+
+  const handleSave = () => {
+    saveSettings({ businessName, currency });
+    Alert.alert("✅ Settings saved!");
+  };
+
+  return (
+    <View className="flex-1 bg-slate-50 p-6">
+      <Text className="text-3xl font-bold mb-8">Business Settings</Text>
+
+      <Text className="text-slate-500 mb-2">Business Name</Text>
+      <TextInput
+        value={businessName}
+        onChangeText={setBusinessName}
+        className="bg-white border border-slate-200 p-4 rounded-3xl mb-8 text-lg"
+      />
+
+      <Text className="text-slate-500 mb-3">Currency Symbol</Text>
+      <View className="flex-row gap-3">
+        {['P', '$', '€'].map(c => (
+          <TouchableOpacity
+            key={c}
+            onPress={() => setCurrency(c)}
+            className={`flex-1 py-5 rounded-3xl border ${currency === c ? 'bg-blue-600 border-blue-600' : 'border-slate-200'}`}
+          >
+            <Text className={`text-center text-lg font-medium ${currency === c ? 'text-white' : ''}`}>{c}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity onPress={handleSave} className="bg-blue-600 py-6 rounded-3xl mt-12">
+        <Text className="text-white text-center text-xl font-semibold">Save Settings</Text>
+      </TouchableOpacity>
+
+      <Text className="text-center text-slate-400 text-xs mt-10">All data saved locally on this device</Text>
+    </View>
+  );
+}
